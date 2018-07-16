@@ -108,7 +108,7 @@ def initialized_files(asset_list):
     # Checks if files exist, and if not initializes them
     for item in asset_list:
         path = Path('data/' + item.ticker + '_data.csv')
-        print(path)
+        # print(path)
         if not path.is_file():
             print(path.is_file())
             with open('data/' + item.ticker + '_data.csv', 'w') as csvfile:
@@ -116,7 +116,7 @@ def initialized_files(asset_list):
                 writer.writerow(['timestamp', 'quantity', 'value'])
             print("Created File \'" + str(path) + '\'')
 
-    print("File initialization complete")
+    # print("File initialization complete")
 
 
 def write_data_to_file(asset_list):
@@ -125,7 +125,7 @@ def write_data_to_file(asset_list):
         with open('data/' + item.ticker + '_data.csv', 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             writer.writerow([time.time(), str(item.quantity), str(item.value)])
-            print(item.value)
+            # print(item.value)
 
 
 # Returns a Dictionary list of all the data saved for a specific symbol
@@ -159,5 +159,7 @@ def plot_data(asset_dict, x_metric, y_metric):
     return plt
     # plt.show()
 
-write_data_to_file(get_wallet())
-
+while True:
+    write_data_to_file(get_wallet())
+    print(str(item+1) + ' records saved')
+    time.sleep(60)
