@@ -11,6 +11,10 @@ import json
 from pprint import pprint
 import datetime
 import time
+import os
+from pathlib import Path
+import csv
+
 
 
 with open('credentials.json') as cred_file:
@@ -78,7 +82,7 @@ def convert_to_usd(asset):
     return asset
 
 
-# Converts entire wallet into dollar equivalent
+# Gets currencies from wallet and returns a list of assets
 def get_wallet():
     balances = exchanges['Binance'].fetch_balance()['info']['balances']
     assets = []
@@ -86,37 +90,74 @@ def get_wallet():
         # Sumes the balances of that are liduid and held up in an order
         if float(ticker['free']) > 0 or float(ticker['locked']) > 0:
             new_asset = Asset(ticker['asset'], Decimal(ticker['free']) + Decimal(ticker['locked']))
+            new_asset = convert_to_usd(new_asset)
             assets.append(new_asset)
-
-    # pprint(assets)
-    failed_lookup = []
-    for index in range(len(assets)):
-        # Check if return type is the number or fail ticker symbol
-        if assets[index].value != 0:
-            assets[index] = convert_to_usd(assets[index])
-        else:
-            failed_lookup.append(convert_to_usd(assets[index]))
-    print(str(len(failed_lookup)) + " currencies could not be found" + str(failed_lookup))
     return assets
-
-
-def write_assets_to_file(list_of_assets, time_delay=0):
-    now = datetime.datetime.now()
-    save_location = 'data/balance_data_' + str(now.strftime("%Y-%m-%d")) + '.json'
-    print(now)
-
-    balances_data = open(save_location, "w+")
-    balances_data.write("{")
-    for i in range(1):
-        for asset in list_of_assets:
-            if asset.value > 0:
-                balances_data.write("\"" + str(asset.ticker) + "\":{\"" + str(asset.timestamp) + "\":\"{"+ asset.to_json() + "\"},\n")
-                # balances_data.write("\"" + str(asset.timestamp) + "\":" + asset.to_json() + ",\n")
-                time.sleep(time_delay)
-    balances_data.write("}")
 
 
 for item in get_wallet():
     item.print()
 
-write_assets_to_file(get_wallet())
+
+def initialized_files(asset_list):
+    # Check is 'data/' directory exist
+    if not os.path.exists('data/'):
+        os.mkdir('data/')
+        print("Created Directory \'data/\'")
+
+    # Checks if files exist, and if not initializes them
+    for item in asset_list:
+        path = Path('data/' + item.ticker + '_data.csv')
+        print(path)
+        if not path.is_file():
+            print(path.is_file())
+            with open('data/' + item.ticker + '_data.csv', 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',')
+                writer.writerow(['timestamp', 'quantity', 'value'])
+            print("Created File \'" + str(path) + '\'')
+
+    print("File initialization complete")
+
+
+def write_data_to_file(asset_list):
+    initialized_files(asset_list)
+    for item in asset_list:
+        with open('data/' + item.ticker + '_data.csv', 'a') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',')
+            writer.writerow([time.time(), str(item.quantity), str(item.value)])
+            print(item.value)
+
+
+# Returns a Dictionary list of all the data saved for a specific symbol
+def parse_data(asset_ticker):
+    asset_data = []
+    with open('data/' + asset_ticker + '_data.csv') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for line in reader:
+            asset_data.append(line)
+    return asset_data
+
+
+def plot_data(asset_dict, x_metric, y_metric):
+    x_metric_lst = []
+    y_metric_lst = []
+    for item in asset_dict:
+        time = datetime.datetime.fromtimestamp(float(item[x_metric])).strftime('%H:%M')
+        x_metric_lst.append(time)
+        # x_metric_lst.append(item[x_metric])
+        y_metric_lst.append(item[y_metric])
+
+    plt.plot(x_metric)
+    plt.plot(x_metric_lst, y_metric_lst)
+    # plt.axis([min(x_metric_lst), max(x_metric_lst), min(y_metric_lst), max(y_metric_lst)])
+
+    # date = datetime.datetime.fromtimestamp(float(x_metric_lst[0])).strftime('%Y-%m-%d %H:%M')
+    # print(date)
+    plt.xlabel(x_metric)
+    plt.ylabel(y_metric)
+    plt.show()
+    return plt
+    # plt.show()
+
+write_data_to_file(get_wallet())
+
